@@ -1,0 +1,95 @@
+### ============================================================
+### AR + Flow Matching Joint Training Configuration Template
+### ============================================================
+### This YAML configures the "fm" training stage which jointly
+### optimizes the AR (autoregressive) language model loss and a
+### Flow Matching auxiliary loss. The FM branch uses a frozen
+### target encoder (e.g. BGE-large) and a trainable vector field
+### MLP head to shape the backbone's hidden representations.
+###
+### At inference time, only the backbone + lm_head are needed.
+### The FM head is discarded.
+### ============================================================
+
+### ==================== Model ====================
+model_name_or_path: meta-llama/Meta-Llama-3-8B-Instruct  # or your local model path
+trust_remote_code: true
+
+### ==================== Method ====================
+stage: fm                        # <-- Use the new "fm" stage
+do_train: true
+finetuning_type: lora            # choices: [lora, freeze, full]
+lora_rank: 8
+lora_target: all
+
+### ==================== FM-specific ====================
+## Target encoder: a frozen sentence encoder for computing z_1
+target_encoder_name_or_path: /BAAI/bge-large-zh
+
+## FM head architecture
+fm_head_num_layers: 3            # Number of MLP layers in the vector field network
+fm_head_hidden_dim: 1024         # Hidden dimension of each MLP layer
+
+## Online token-level suffix encoding (set fm_suffix_tokens > 0 to enable)
+## Each response token t gets z_1[t] = Encoder(y_{t+1}, ..., y_{t+k})
+## The encoder is loaded on GPU during training (frozen, fp16)
+fm_suffix_tokens: 256            # 0 = global embedding (legacy); >0 = per-token suffix
+fm_suffix_stride: 32             # encode every 32nd position; fill others with nearest anchor
+fm_suffix_batch_size: 64         # Encoder batch size for suffix encoding
+
+## FM loss settings
+fm_loss_weight: 1.0              # Weight coefficient lambda for L_FM
+fm_loss_weight_schedule: constant  # choices: [constant, linear_decay, cosine_decay]
+
+## Gradient gating: prevents FM head from "short-circuiting" the backbone
+## When FM head grad norm spikes (head learning its own shortcut), detach h
+## so FM loss only updates FM head, not backbone.
+fm_grad_gate_enabled: true       # Enable adaptive gradient gating
+fm_grad_gate_mode: dynamic       # choices: [static, dynamic]
+fm_grad_gate_threshold: 1.5      # dynamic: gate when norm > 1.5x EMA; static: absolute threshold
+fm_grad_gate_ema_decay: 0.99     # EMA smoothing factor for grad norm tracking
+
+## EMA teacher: slows down FM head parameter updates to keep it as a stable
+## auxiliary signal. Prevents FM head from learning too fast and "solving"
+## the task itself without forcing backbone to improve.
+fm_ema_teacher_enabled: true     # Enable EMA parameter smoothing for FM head
+fm_ema_teacher_decay: 0.999      # 0.999 = very slow; 0.99 = moderate; 0.9 = fast
+
+## Which backbone layer to extract hidden states from (-1 = last layer)
+fm_backbone_layer_index: -1
+
+### ==================== Dataset ====================
+dataset: alpaca_en_demo          # Replace with your SFT-format dataset
+template: llama3
+cutoff_len: 2048
+max_samples: 1000
+overwrite_cache: true
+preprocessing_num_workers: 16
+dataloader_num_workers: 4
+
+### ==================== Output ====================
+output_dir: saves/llama3-8b/lora/fm
+logging_steps: 10
+save_steps: 500
+plot_loss: true
+overwrite_output_dir: true
+save_only_model: false
+report_to: none                  # choices: [none, wandb, tensorboard, swanlab, mlflow]
+
+### ==================== Training ====================
+per_device_train_batch_size: 2
+gradient_accumulation_steps: 4
+learning_rate: 1.0e-4
+num_train_epochs: 3.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+bf16: true
+ddp_timeout: 180000000
+resume_from_checkpoint: null
+
+### ==================== Eval (optional) ====================
+# eval_dataset: alpaca_en_demo
+# val_size: 0.1
+# per_device_eval_batch_size: 1
+# eval_strategy: steps
+# eval_steps: 500

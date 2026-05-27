@@ -12,7 +12,7 @@ A conditional flow-matching auxiliary loss teaches LLM backbones to preserve mul
 ```text
 sfr/
 ├── train/                     # Modified and added files for LLaMA-Factory
-└── training-data-synthesis/   # Data cleaning scripts for open-source datasets
+└── data_curation/             # Data cleaning scripts for open-source datasets
 ```
 
 ## Installation
@@ -73,12 +73,12 @@ The new training pipeline is enabled by setting `stage: fm` in the YAML config.
 
 ## Data Preparation
 
-The `training-data-synthesis/` directory contains scripts for cleaning two open-source code datasets.
+The `data_curation/` directory contains scripts for cleaning two open-source code datasets.
 
 ### OpenCodeInstruct
 
 ```bash
-cd /sfr/training-data-synthesis/opencodeinstruct
+cd /sfr/data_curation/opencodeinstruct
 ```
 
 Set paths in `data_curation.py`:
@@ -111,7 +111,7 @@ python convert_to_train_data.py
 ### rStar-Coder
 
 ```bash
-cd /sfr/training-data-synthesis/rstar-code
+cd /sfr/data_curation/rstar-code
 ```
 
 Set paths in `data_curation.py`:

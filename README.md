@@ -2,7 +2,7 @@
 
 > Semantic Flow Regularization: Teaching LLMs to Generate Diverse Yet Coherent Responses
 
-arXiv: xxx
+arXiv: https://arxiv.org/abs/2605.27971
 
 ## Overview
 A conditional flow-matching auxiliary loss teaches LLM backbones to preserve multi-modal output diversity during fine-tuning, then is discarded at inference for zero deployment cost.
